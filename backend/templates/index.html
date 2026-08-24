@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Home - SkillSwap{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 4rem 0;">
+    <h1 style="font-size: 3rem; color: white; margin-bottom: 1rem;">
+        Welcome to SkillSwap
+    </h1>
+    <p style="font-size: 1.5rem; color: white; margin-bottom: 2rem;">
+        Swap Skills, Learn Together, Grow Together!
+    </p>
+    
+    <div style="margin: 2rem 0;">
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary" style="font-size: 1.2rem; padding: 1rem 2rem;">
+            Get Started
+        </a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-success" style="font-size: 1.2rem; padding: 1rem 2rem; margin-left: 1rem;">
+            Login
+        </a>
+    </div>
+    
+    <div class="grid grid-3" style="margin-top: 4rem; text-align: left;">
+        <div class="card">
+            <h3>Add Your Skills</h3>
+            <p>List the skills you want to teach - from programming to music to languages!</p>
+        </div>
+        <div class="card">
+            <h3>Find Swap Partners</h3>
+            <p>Discover people who want to learn what you teach and teach what you want to learn.</p>
+        </div>
+        <div class="card">
+            <h3>Video Call & Learn</h3>
+            <p>Schedule meetings and have live video calls to exchange skills in real-time.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

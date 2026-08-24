@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}My Availability - SkillSwap{% endblock %}
+
+{% block content %}
+<h1 style="color: white; margin-bottom: 2rem;">
+    My Availability
+</h1>
+
+<div class="grid grid-2">
+    <div class="card">
+        <h3>Add Time Slot</h3>
+        <form method="POST" action="{{ url_for('scheduling.manage_availability') }}">
+            <div class="form-group">
+                <label for="day_of_week">Day</label>
+                <select id="day_of_week" name="day_of_week" required>
+                    <option value="mon">Monday</option>
+                    <option value="tue">Tuesday</option>
+                    <option value="wed">Wednesday</option>
+                    <option value="thu">Thursday</option>
+                    <option value="fri">Friday</option>
+                    <option value="sat">Saturday</option>
+                    <option value="sun">Sunday</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="start_time">Start Time</label>
+                <input type="time" id="start_time" name="start_time" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="end_time">End Time</label>
+                <input type="time" id="end_time" name="end_time" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="timezone">Timezone</label>
+                <select id="timezone" name="timezone">
+                    <option value="Asia/Kolkata">India (IST)</option>
+                    <option value="America/New_York">New York (EST)</option>
+                    <option value="Europe/London">London (GMT)</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Add Availability</button>
+        </form>
+    </div>
+    
+    <div class="card">
+        <h3>Your Available Slots</h3>
+        {% if availabilities %}
+            <ul style="list-style: none;">
+                {% for avail in availabilities %}
+                    <li style="padding: 1rem; background: #f9fafb; border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>{{ avail.day_of_week }}</strong>
+                            {{ avail.start_time.strftime('%H:%M') }} - {{ avail.end_time.strftime('%H:%M') }}
+                            <span style="color: #666;">({{ avail.timezone }})</span>
+                        </div>
+                        <form method="POST" action="{{ url_for('scheduling.delete_availability', avail_id=avail.id) }}" 
+                              style="display: inline;">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No availability slots added yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

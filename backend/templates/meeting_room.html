@@ -1,0 +1,899 @@
+{% extends "base.html" %}
+
+{% block title %}SkillSwap Video Meeting{% endblock %}
+
+{% block content %}
+
+<div class="meeting-page">
+
+    <div class="meeting-header">
+
+        <div>
+            <h2>SkillSwap Video Meeting</h2>
+
+            <p>
+                Meeting code:
+                <strong>{{ meeting.meeting_link }}</strong>
+            </p>
+
+            <p id="connection-status">
+                Connecting...
+            </p>
+        </div>
+
+        <a
+            href="{{ url_for('dashboard') }}"
+            class="end-call-button"
+        >
+            End Call
+        </a>
+
+    </div>
+
+
+    <div class="videos">
+
+        <div class="video-box">
+
+            <video
+                id="localVideo"
+                autoplay
+                playsinline
+                muted
+            ></video>
+
+            <div class="video-label">
+                You
+            </div>
+
+        </div>
+
+
+        <div class="video-box">
+
+            <video
+                id="remoteVideo"
+                autoplay
+                playsinline
+            ></video>
+
+            <div class="video-label">
+                Other Participant
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="controls">
+
+        <button id="cameraButton">
+            Camera On
+        </button>
+
+        <button id="microphoneButton">
+            Microphone On
+        </button>
+
+        <button id="hangupButton">
+            End Call
+        </button>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_css %}
+
+<style>
+
+.meeting-page {
+    width: 100%;
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 0 16px;
+    box-sizing: border-box;
+}
+
+.meeting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.meeting-header h2 {
+    margin: 0;
+}
+
+.meeting-header p {
+    margin: 6px 0;
+    color: #666;
+}
+
+#connection-status {
+    font-weight: 600;
+}
+
+.videos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.video-box {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    background: #111827;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.video-box video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #111827;
+}
+
+.video-label {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.65);
+    color: white;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.controls button,
+.end-call-button {
+    border: none;
+    padding: 11px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 15px;
+}
+
+.end-call-button {
+    background: #dc3545;
+    color: white;
+}
+
+#cameraButton,
+#microphoneButton {
+    background: #2563eb;
+    color: white;
+}
+
+#hangupButton {
+    background: #dc3545;
+    color: white;
+}
+
+@media (max-width: 800px) {
+
+    .videos {
+        grid-template-columns: 1fr;
+    }
+
+    .video-box {
+        height: 350px;
+    }
+
+}
+
+</style>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<!-- Flask-SocketIO client -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+
+<script>
+
+const meetingId = "{{ meeting.id }}";
+
+const currentUserId = "{{ current_user.id }}";
+
+const localVideo =
+    document.getElementById("localVideo");
+
+const remoteVideo =
+    document.getElementById("remoteVideo");
+
+const connectionStatus =
+    document.getElementById("connection-status");
+
+const cameraButton =
+    document.getElementById("cameraButton");
+
+const microphoneButton =
+    document.getElementById("microphoneButton");
+
+const hangupButton =
+    document.getElementById("hangupButton");
+
+
+let localStream = null;
+
+let peerConnection = null;
+
+let cameraEnabled = true;
+
+let microphoneEnabled = true;
+
+let socket = null;
+
+
+/*
+====================================================
+WEBRTC CONFIGURATION
+====================================================
+*/
+
+const rtcConfiguration = {
+
+    iceServers: [
+
+        {
+            urls: "stun:stun.l.google.com:19302"
+        },
+
+        {
+            urls: "stun:stun1.l.google.com:19302"
+        }
+
+    ]
+
+};
+
+
+/*
+====================================================
+STATUS
+====================================================
+*/
+
+function setStatus(message) {
+
+    connectionStatus.textContent = message;
+
+    console.log(
+        "[SkillSwap WebRTC]",
+        message
+    );
+
+}
+
+
+/*
+====================================================
+START CAMERA + MICROPHONE
+====================================================
+*/
+
+async function startLocalMedia() {
+
+    try {
+
+        setStatus(
+            "Requesting camera and microphone permission..."
+        );
+
+        localStream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video: true,
+
+                audio: true
+
+            });
+
+
+        localVideo.srcObject =
+            localStream;
+
+
+        setStatus(
+            "Camera and microphone ready."
+        );
+
+
+        connectSocket();
+
+
+    } catch (error) {
+
+        console.error(
+            "getUserMedia error:",
+            error
+        );
+
+
+        setStatus(
+            "Camera/microphone permission denied."
+        );
+
+
+        alert(
+            "Please allow camera and microphone permission and reload the meeting."
+        );
+
+    }
+
+}
+
+
+/*
+====================================================
+SOCKET.IO CONNECTION
+====================================================
+*/
+
+function connectSocket() {
+
+    socket = io();
+
+
+    socket.on(
+        "connect",
+        function () {
+
+            console.log(
+                "Socket connected:",
+                socket.id
+            );
+
+
+            setStatus(
+                "Connected to SkillSwap meeting server."
+            );
+
+
+            socket.emit(
+                "join_meeting",
+                {
+                    meeting_id: meetingId
+                }
+            );
+
+        }
+    );
+
+
+    socket.on(
+        "disconnect",
+        function () {
+
+            setStatus(
+                "Disconnected from meeting server."
+            );
+
+        }
+    );
+
+
+    /*
+    ================================================
+    ANOTHER USER JOINED
+    ================================================
+    */
+
+    socket.on(
+        "user_joined",
+        async function (data) {
+
+            console.log(
+                "Another user joined:",
+                data
+            );
+
+
+            setStatus(
+                "Participant joined. Connecting video..."
+            );
+
+
+            await createPeerConnection();
+
+
+            const offer =
+                await peerConnection.createOffer();
+
+
+            await peerConnection.setLocalDescription(
+                offer
+            );
+
+
+            socket.emit(
+                "webrtc_offer",
+                {
+
+                    meeting_id: meetingId,
+
+                    offer: offer
+
+                }
+            );
+
+        }
+    );
+
+
+    /*
+    ================================================
+    RECEIVE OFFER
+    ================================================
+    */
+
+    socket.on(
+        "webrtc_offer",
+        async function (data) {
+
+            console.log(
+                "Received WebRTC offer."
+            );
+
+
+            await createPeerConnection();
+
+
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(
+                    data.offer
+                )
+            );
+
+
+            const answer =
+                await peerConnection.createAnswer();
+
+
+            await peerConnection.setLocalDescription(
+                answer
+            );
+
+
+            socket.emit(
+                "webrtc_answer",
+                {
+
+                    meeting_id: meetingId,
+
+                    answer: answer
+
+                }
+            );
+
+
+            setStatus(
+                "Video connection established."
+            );
+
+        }
+    );
+
+
+    /*
+    ================================================
+    RECEIVE ANSWER
+    ================================================
+    */
+
+    socket.on(
+        "webrtc_answer",
+        async function (data) {
+
+            console.log(
+                "Received WebRTC answer."
+            );
+
+
+            if (!peerConnection) {
+
+                return;
+
+            }
+
+
+            await peerConnection.setRemoteDescription(
+
+                new RTCSessionDescription(
+                    data.answer
+                )
+
+            );
+
+
+            setStatus(
+                "Video connection established."
+            );
+
+        }
+    );
+
+
+    /*
+    ================================================
+    RECEIVE ICE CANDIDATE
+    ================================================
+    */
+
+    socket.on(
+        "webrtc_ice_candidate",
+        async function (data) {
+
+            console.log(
+                "Received ICE candidate."
+            );
+
+
+            if (!peerConnection) {
+
+                return;
+
+            }
+
+
+            try {
+
+                await peerConnection.addIceCandidate(
+
+                    new RTCIceCandidate(
+                        data.candidate
+                    )
+
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "ICE candidate error:",
+                    error
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+/*
+====================================================
+CREATE PEER CONNECTION
+====================================================
+*/
+
+async function createPeerConnection() {
+
+    if (peerConnection) {
+
+        return;
+
+    }
+
+
+    peerConnection =
+        new RTCPeerConnection(
+            rtcConfiguration
+        );
+
+
+    /*
+    Add local camera/microphone tracks
+    */
+
+    localStream
+        .getTracks()
+        .forEach(
+            function (track) {
+
+                peerConnection.addTrack(
+                    track,
+                    localStream
+                );
+
+            }
+        );
+
+
+    /*
+    Receive remote tracks
+    */
+
+    peerConnection.ontrack =
+        function (event) {
+
+            console.log(
+                "Remote video received."
+            );
+
+
+            if (
+                event.streams &&
+                event.streams[0]
+            ) {
+
+                remoteVideo.srcObject =
+                    event.streams[0];
+
+            }
+
+        };
+
+
+    /*
+    ICE candidates
+    */
+
+    peerConnection.onicecandidate =
+        function (event) {
+
+            if (
+                event.candidate &&
+                socket
+            ) {
+
+                socket.emit(
+                    "webrtc_ice_candidate",
+                    {
+
+                        meeting_id: meetingId,
+
+                        candidate:
+                            event.candidate
+
+                    }
+                );
+
+            }
+
+        };
+
+
+    /*
+    Connection state
+    */
+
+    peerConnection.onconnectionstatechange =
+        function () {
+
+            console.log(
+                "Connection state:",
+                peerConnection.connectionState
+            );
+
+
+            if (
+                peerConnection.connectionState ===
+                "connected"
+            ) {
+
+                setStatus(
+                    "Connected — you can see each other now."
+                );
+
+            }
+
+
+            if (
+                peerConnection.connectionState ===
+                "disconnected"
+            ) {
+
+                setStatus(
+                    "Participant disconnected."
+                );
+
+            }
+
+
+            if (
+                peerConnection.connectionState ===
+                "failed"
+            ) {
+
+                setStatus(
+                    "WebRTC connection failed."
+                );
+
+            }
+
+        };
+
+
+    /*
+    ICE connection state
+    */
+
+    peerConnection.oniceconnectionstatechange =
+        function () {
+
+            console.log(
+                "ICE state:",
+                peerConnection.iceConnectionState
+            );
+
+        };
+
+}
+
+
+/*
+====================================================
+CAMERA BUTTON
+====================================================
+*/
+
+cameraButton.addEventListener(
+    "click",
+    function () {
+
+        if (!localStream) {
+
+            return;
+
+        }
+
+
+        const videoTracks =
+            localStream.getVideoTracks();
+
+
+        videoTracks.forEach(
+            function (track) {
+
+                track.enabled =
+                    !track.enabled;
+
+                cameraEnabled =
+                    track.enabled;
+
+            }
+        );
+
+
+        cameraButton.textContent =
+            cameraEnabled
+                ? "Camera On"
+                : "Camera Off";
+
+    }
+);
+
+
+/*
+====================================================
+MICROPHONE BUTTON
+====================================================
+*/
+
+microphoneButton.addEventListener(
+    "click",
+    function () {
+
+        if (!localStream) {
+
+            return;
+
+        }
+
+
+        const audioTracks =
+            localStream.getAudioTracks();
+
+
+        audioTracks.forEach(
+            function (track) {
+
+                track.enabled =
+                    !track.enabled;
+
+                microphoneEnabled =
+                    track.enabled;
+
+            }
+        );
+
+
+        microphoneButton.textContent =
+            microphoneEnabled
+                ? "Microphone On"
+                : "Microphone Off";
+
+    }
+);
+
+
+/*
+====================================================
+END CALL
+====================================================
+*/
+
+hangupButton.addEventListener(
+    "click",
+    function () {
+
+        endCall();
+
+    }
+);
+
+
+function endCall() {
+
+
+    if (peerConnection) {
+
+        peerConnection.close();
+
+        peerConnection = null;
+
+    }
+
+
+    if (localStream) {
+
+        localStream
+            .getTracks()
+            .forEach(
+                function (track) {
+
+                    track.stop();
+
+                }
+            );
+
+    }
+
+
+    if (socket) {
+
+        socket.disconnect();
+
+    }
+
+
+    window.location.href =
+        "{{ url_for('dashboard') }}";
+
+}
+
+
+/*
+====================================================
+START
+====================================================
+*/
+
+startLocalMedia();
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Book Meeting - SkillSwap{% endblock %}
+
+{% block content %}
+<h1 style="color: white; margin-bottom: 2rem;">
+    Book a Meeting
+</h1>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h3>Schedule Meeting</h3>
+    
+    <form method="POST" action="{{ url_for('scheduling.book_meeting', target_user_id=target_user_id) }}">
+        <div class="form-group">
+            <label for="swap_request_id">Swap Request</label>
+            <select id="swap_request_id" name="swap_request_id" required>
+                {% for request in swap_requests %}
+                    <option value="{{ request.id }}">
+                        {{ request.skill_offered.skill_name }} ↔ {{ request.skill_wanted.skill_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="meeting_date">Meeting Date</label>
+            <input type="date" id="meeting_date" name="meeting_date" required min="{{ today }}">
+        </div>
+        
+        <div class="form-group">
+            <label for="start_time">Start Time</label>
+            <input type="time" id="start_time" name="start_time" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="end_time">End Time</label>
+            <input type="time" id="end_time" name="end_time" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+            Schedule Meeting
+        </button>
+    </form>
+</div>
+{% endblock %}

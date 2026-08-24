@@ -1,0 +1,17 @@
+name = "skillswap-signaling"
+main = "workers/signaling-worker.js"
+compatibility_date = "2024-01-01"
+
+# Enable WebSocket
+workers_dev = true
+
+# Port for local development
+port = 8787
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+[[d1_databases]]
+binding = "skillswapapp"
+database_name = "skillswapapp"
+database_id = "8eac126e-8cc6-4364-85a2-a53ccc9fd5c4"

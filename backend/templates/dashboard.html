@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SkillSwap{% endblock %}
+
+{% block content %}
+
+<h1 style="color: white; margin-bottom: 2rem;">
+    Welcome, {{ current_user.username }}!
+</h1>
+
+<!-- Skills Section -->
+<div class="grid grid-2">
+
+    <!-- Add Skill -->
+    <div class="card">
+        <h3>Add Your Skill</h3>
+
+        <form method="POST" action="/skills/add_skill">
+            <div class="form-group">
+                <label for="skill_name">Skill Name</label>
+                <input
+                    type="text"
+                    id="skill_name"
+                    name="skill_name"
+                    required
+                    placeholder="e.g., Python, Guitar"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="skill_type">Skill Type</label>
+                <select id="skill_type" name="skill_type" required>
+                    <option value="teach">I Can Teach</option>
+                    <option value="learn">I Want to Learn</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="skill_level">Your Level</label>
+                <select id="skill_level" name="skill_level" required>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="3"
+                    placeholder="Brief description"
+                ></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Add Skill
+            </button>
+        </form>
+    </div>
+
+    <!-- Profile Skills -->
+    <div class="card">
+        <h3>Your Profile Skills</h3>
+
+        {% if user_skills %}
+
+            <h4 style="color: #10b981; margin-top: 1rem;">
+                I Can Teach:
+            </h4>
+
+            <ul style="list-style: none; padding: 0;">
+                {% for skill in user_skills if skill.skill_type == 'teach' %}
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                        <strong>{{ skill.skill_name }}</strong>
+                        ({{ skill.skill_level }})
+
+                        {% if skill.description %}
+                            <p style="color: #666; font-size: 0.9rem;">
+                                {{ skill.description }}
+                            </p>
+                        {% endif %}
+                    </li>
+                {% else %}
+                    <li>No teaching skills added.</li>
+                {% endfor %}
+            </ul>
+
+            <h4 style="color: #f59e0b; margin-top: 1rem;">
+                I Want to Learn:
+            </h4>
+
+            <ul style="list-style: none; padding: 0;">
+                {% for skill in user_skills if skill.skill_type == 'learn' %}
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                        <strong>{{ skill.skill_name }}</strong>
+                        ({{ skill.skill_level }})
+
+                        {% if skill.description %}
+                            <p style="color: #666; font-size: 0.9rem;">
+                                {{ skill.description }}
+                            </p>
+                        {% endif %}
+                    </li>
+                {% else %}
+                    <li>No learning skills added.</li>
+                {% endfor %}
+            </ul>
+
+        {% else %}
+            <p>No skills added yet.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Pending Swap Requests -->
+<div class="card" style="margin-top: 2rem;">
+    <h3>Pending Swap Requests</h3>
+
+    {% if pending_requests %}
+
+        <div class="grid grid-2">
+            {% for request in pending_requests %}
+
+                <div style="padding: 1rem; background: #f9fafb; border-radius: 8px;">
+
+                    <p>
+                        {% if request.requester_id == current_user.id %}
+                            <span style="color: #3b82f6;">Sent to:</span>
+                            <strong>{{ request.target.username }}</strong>
+                        {% else %}
+                            <span style="color: #10b981;">From:</span>
+                            <strong>{{ request.requester.username }}</strong>
+                        {% endif %}
+                    </p>
+
+                    <p>
+                        <strong>Offering:</strong>
+                        {{ request.skill_offered.skill_name }}
+                    </p>
+
+                    <p>
+                        <strong>Wanting:</strong>
+                        {{ request.skill_wanted.skill_name }}
+                    </p>
+
+                    {% if request.target_id == current_user.id %}
+                        <form
+                            method="POST"
+                            action="/swaps/respond_swap_request/{{ request.id }}"
+                            style="margin-top: 0.5rem;"
+                        >
+                            <button
+                                type="submit"
+                                name="action"
+                                value="accept"
+                                class="btn btn-success"
+                            >
+                                Accept
+                            </button>
+
+                            <button
+                                type="submit"
+                                name="action"
+                                value="reject"
+                                class="btn btn-danger"
+                            >
+                                Reject
+                            </button>
+                        </form>
+                    {% else %}
+                        <span style="color: #f59e0b;">Pending</span>
+                    {% endif %}
+
+                </div>
+
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <p>No pending requests.</p>
+    {% endif %}
+</div>
+
+<!-- Upcoming Meetings -->
+<div class="card" style="margin-top: 2rem;">
+    <h3>Upcoming Meetings</h3>
+
+    {% if upcoming_meetings %}
+
+        <div class="grid grid-2">
+            {% for meeting in upcoming_meetings %}
+
+                <div style="padding: 1rem; background: #f9fafb; border-radius: 8px;">
+
+                    <p>
+                        <strong>Date:</strong>
+                        {{ meeting.meeting_date }}
+                    </p>
+
+                    <p>
+                        <strong>Time:</strong>
+                        {{ meeting.start_time }} - {{ meeting.end_time }}
+                    </p>
+
+                    <p>
+                        <strong>With:</strong>
+
+                        {% if meeting.organizer_id == current_user.id %}
+                            {{ meeting.participant.username }}
+                        {% else %}
+                            {{ meeting.organizer.username }}
+                        {% endif %}
+                    </p>
+
+                    <p>
+                        <strong>Meeting Code:</strong>
+
+                        <code style="background: #e5e7eb; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                            {{ meeting.meeting_link }}
+                        </code>
+                    </p>
+
+                    <div style="margin-top: 0.5rem;">
+                        <a
+                            href="{{ url_for('webrtc.meeting_room', meeting_id=meeting.id) }}"
+                            class="btn btn-primary"
+                        >
+                            Join Meeting
+                        </a>
+                    </div>
+
+                </div>
+
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <p>No upcoming meetings.</p>
+    {% endif %}
+<!-- Schedule New Meeting -->
+<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #e5e7eb;">
+    <h4>Schedule New Meeting</h4>
+
+    <form method="POST" action="/meetings/schedule_meeting">
+        <div class="form-group">
+            <label for="meeting_date">Meeting Date</label>
+
+            <input
+                type="date"
+                id="meeting_date"
+                name="meeting_date"
+                required
+                min="{{ today }}"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="start_time">Start Time</label>
+
+            <input
+                type="time"
+                id="start_time"
+                name="start_time"
+                required
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="end_time">End Time</label>
+
+            <input
+                type="time"
+                id="end_time"
+                name="end_time"
+                required
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="participant_id">Participant User ID</label>
+
+            <input
+                type="number"
+                id="participant_id"
+                name="participant_id"
+                required
+                min="1"
+                placeholder="Enter the other user's ID"
+            >
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Schedule Meeting
+        </button>
+    </form>
+</div>
+    <!-- Join Meeting: केवल एक form -->
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #e5e7eb;">
+
+        <h4>Join Jitsi Video Meeting</h4>
+
+        <form
+            method="POST"
+            action="{{ url_for('webrtc.join_meeting') }}"
+        >
+            <div class="form-group">
+                <label for="meeting_code">Meeting Code</label>
+
+                <input
+                    type="text"
+                    id="meeting_code"
+                    name="meeting_code"
+                    required
+                    placeholder="Enter or paste meeting code"
+                >
+            </div>
+
+            <button type="submit" class="btn btn-success">
+                Join Jitsi Video Meeting
+            </button>
+        </form>
+
+    </div>
+
+</div>
+
+<!-- Smart Matches -->
+<div class="card" style="margin-top: 2rem;">
+    <h3>Smart Matches For You</h3>
+
+    <div id="smartMatches">
+        <p>Finding matches...</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+async function loadSmartMatches() {
+    try {
+        const response = await fetch('/skills/api/skills/smart-matches');
+
+        if (!response.ok) {
+            throw new Error('Unable to load smart matches');
+        }
+
+        const matches = await response.json();
+        const matchesContainer = document.getElementById('smartMatches');
+
+        matchesContainer.innerHTML = '';
+
+        if (matches.length === 0) {
+            matchesContainer.innerHTML =
+                '<p>No matches found yet. Add more skills!</p>';
+            return;
+        }
+
+        matches.forEach(match => {
+            const matchCard = document.createElement('div');
+
+            matchCard.style.cssText =
+                'padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; margin-bottom: 1rem;';
+
+            matchCard.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="margin: 0;">${match.username}</h4>
+                        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
+                            Can teach you: ${match.skill_name}
+                            (${match.skill_level})
+                        </p>
+                    </div>
+
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.5rem; font-weight: bold;">
+                            ${match.match_score}%
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">
+                            Match
+                        </div>
+                    </div>
+                </div>
+
+                <button
+                    onclick="sendSwapRequest(${match.user_id})"
+                    class="btn btn-success"
+                    style="margin-top: 1rem; width: 100%; background: white; color: #667eea;"
+                >
+                    Send Swap Request
+                </button>
+            `;
+
+            matchesContainer.appendChild(matchCard);
+        });
+
+    } catch (error) {
+        console.error('Error loading smart matches:', error);
+
+        document.getElementById('smartMatches').innerHTML =
+            '<p>Smart matches load नहीं हो सके।</p>';
+    }
+}
+
+function sendSwapRequest(userId) {
+    alert('Swap request sent!');
+}
+
+loadSmartMatches();
+</script>
+
+{% endblock %}
