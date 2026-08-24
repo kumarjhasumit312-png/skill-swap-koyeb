@@ -11,8 +11,5 @@
       "src": "/(.*)",
       "dest": "backend/app.py"
     }
-  ],
-  "projectSettings": {
-    "framework": null
-  }
+  ]
 }
